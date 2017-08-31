@@ -17,21 +17,25 @@ PS2X ps2x;  //The PS2 Controller Class
 #define PIN_PS2_DAT 2
 
 // nRF hash string to link up connection between transmitter/receiver
-const byte nrf24Address[5] = {'t','e','s','t','1'};
+const byte nrf24Address[5] = {'l','e','g','o','1'};
 
 RF24 radio(PIN_RF24_CE, PIN_RF24_CSN); // Create a Radio
 
+// this must match dataToSend in the RX
 unsigned int dataToSend[3]; // only three parameters are sending between tx/rx
 
-unsigned int stateHorn = 0;
-unsigned int stateFrontSideBeams = 0;
-unsigned int stateLights = 0;
+unsigned int statusHorn = 0;
+unsigned int statusFrontSideBeams = 0;
+unsigned int statusLights = 0;
 
 /*
 unsigned long currentMillis;
 unsigned long prevMillis;
 unsigned long txIntervalMillis = 1000; // send once per second
 */
+
+
+
 
 void setup() {
 
@@ -49,29 +53,31 @@ void setup() {
 
 }
 
-//====================
+
+
 
 void loop() {
 
   ps2x.read_gamepad(); // This needs to be called at least once a second to get data from the controller.
 
-  if ( ps2x.Button(PSB_L1) ) { // horn sound
-    Serial.println("L1 pressed - horn");
-    stateHorn = !stateHorn;
+  statusHorn = 0;
+  if ( ps2x.Button(PSB_L2) ) { // horn sound
+    Serial.println("L2 pressed - horn");
+    statusHorn = 1;
   }
-  dataToSend[0] = stateHorn;
+  dataToSend[0] = statusHorn;
 
-  if ( ps2x.Button(PSB_GREEN) ) { // front high beams + side strong beams
+  if ( ps2x.ButtonPressed(PSB_GREEN) ) { // front high beams + side strong beams
     Serial.println("Triangle 1 pressed - front high beams");
-    stateFrontSideBeams = !stateFrontSideBeams;
+    statusFrontSideBeams = !statusFrontSideBeams;
   } 
-  dataToSend[1] = stateFrontSideBeams;
+  dataToSend[1] = statusFrontSideBeams;
 
-  if ( ps2x.Button(PSB_START) ) { // switch on/off for any lights
+  if ( ps2x.ButtonPressed(PSB_START) ) { // switch on/off for any lights
     Serial.println("Start pressed - switch on/off for any lights");
-    stateLights = !stateLights;
+    statusLights = !statusLights;
   }
-  dataToSend[2] = stateLights;
+  dataToSend[2] = statusLights;
         
 
   
@@ -87,7 +93,8 @@ void loop() {
 
 }
 
-//====================
+
+
 
 void send() {
 
