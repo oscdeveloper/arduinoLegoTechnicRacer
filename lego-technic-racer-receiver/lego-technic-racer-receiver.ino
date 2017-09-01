@@ -1,4 +1,4 @@
-// SimpleRx - the slave or the receiver
+// The slave or the receiver
 
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -7,15 +7,15 @@
 #define PIN_RF24_CE 8
 #define PIN_RF24_CSN 7
 
-#define motor2In1 5 // TODO change to PIN_xxxx
-#define motor2In2 6
+#define MOTOR_LEFT_FORWARD_PIN 5 
+#define MOTOR_LEFT_REVERSE_PIN 6
 
-#define motor1In3 9  
-#define motor1In4 10
+#define MOTOR_RIGHT_REVERSE_PIN 9  
+#define MOTOR_RIGHT_FORWARD_PIN 10
 
 #define PIN_HORN 3
 
-#define PIN_LED_BACK_RED 4
+#define PIN_LED_TAILLIGHTS_RED 4
 #define PIN_LED_SIDE_AND_FRONT_WHITE 2
 
 
@@ -23,30 +23,30 @@ const byte thisSlaveAddress[5] = {'l','e','g','o','1'};
 
 RF24 radio(PIN_RF24_CE, PIN_RF24_CSN);
 
-int dataReceived[3]; // this must match dataToSend in the TX
+int dataReceived[5]; // this must match dataToSend in the TX
 
 unsigned int statusFrontSideBeams = 0;
 unsigned int statusLights = 0;
+
+unsigned int leftMotorSpeed;
+unsigned int rightMotorSpeed;
 
 
 
 
 void setup() {
 
-  pinMode(motor2In1, OUTPUT);
-  pinMode(motor2In2, OUTPUT);    
+  pinMode(MOTOR_LEFT_FORWARD_PIN, OUTPUT);
+  pinMode(MOTOR_LEFT_REVERSE_PIN, OUTPUT);    
 
-  pinMode(motor1In3, OUTPUT);
-  pinMode(motor1In4, OUTPUT);  
+  pinMode(MOTOR_RIGHT_REVERSE_PIN, OUTPUT);
+  pinMode(MOTOR_RIGHT_FORWARD_PIN, OUTPUT);  
 
-  analogWrite(motor2In1, 0);
-  analogWrite(motor2In2, 0);
+  analogWrite(MOTOR_LEFT_FORWARD_PIN, 0);
+  analogWrite(MOTOR_LEFT_REVERSE_PIN, 0);
 
-  analogWrite(motor1In3, 0);
-  analogWrite(motor1In4, 0); 
-  
-  //Serial.begin(9600);
-  //Serial.println("SimpleRx Starting");
+  analogWrite(MOTOR_RIGHT_REVERSE_PIN, 0);
+  analogWrite(MOTOR_RIGHT_FORWARD_PIN, 0); 
   
   radio.begin();
   radio.setDataRate( RF24_250KBPS );
@@ -63,10 +63,10 @@ void setup() {
   delay(100); 
   noTone(PIN_HORN);
 
-  pinMode(PIN_LED_BACK_RED, OUTPUT);
+  pinMode(PIN_LED_TAILLIGHTS_RED, OUTPUT);
   pinMode(PIN_LED_SIDE_AND_FRONT_WHITE, OUTPUT);
 
-  digitalWrite(PIN_LED_BACK_RED, LOW);
+  digitalWrite(PIN_LED_TAILLIGHTS_RED, LOW);
   digitalWrite(PIN_LED_SIDE_AND_FRONT_WHITE, LOW);
     
 }
@@ -75,8 +75,6 @@ void setup() {
 
 
 void loop() {
-    
-    //showData();
 
   if ( radio.available() ) {
     
@@ -96,12 +94,13 @@ void loop() {
 
     if ( statusLights ) {
       
-      digitalWrite(PIN_LED_BACK_RED, HIGH);
+      digitalWrite(PIN_LED_TAILLIGHTS_RED, HIGH);
 
       if ( dataReceived[1] != statusFrontSideBeams ) {
         statusFrontSideBeams = dataReceived[1];       
       }
-        
+
+      // switch on/off front high beams + side strong beams
       if ( statusFrontSideBeams == 1 ) {
         digitalWrite(PIN_LED_SIDE_AND_FRONT_WHITE, HIGH);
         statusFrontSideBeams = dataReceived[1];
@@ -111,108 +110,48 @@ void loop() {
       //TODO switch off front dipped lights   
       
     } else {
-      switchOffLights();
+      switchLightsOff();
     }
 
-    
 
-
-
-
-
-
-
-
- 
-
-        //Serial.print("Data received: ");
-        //Serial.println(dataReceived[0]);
-        if ( dataReceived[0] == 30 || dataReceived[0] == 1023 ) {
-
-
-        digitalWrite(PIN_LED_BACK_RED, HIGH);
-        digitalWrite(PIN_LED_SIDE_AND_FRONT_WHITE, HIGH);
-        
-                  
-        tone(3, 20);
-        
-        analogWrite(motor2In1, 200);
-        //delay(2000);
-        analogWrite(motor1In3, 200);
-        //delay(2000);
-
-          /*for (int i=100; i<=255; i++) {
-            analogWrite(motor2In1, i);
-            analogWrite(motor2In2, 0);  
-            Serial.println(i);   
-            delay(10);        
-          }
-          delay(1000);
-
-          for (int i=100; i<=255; i++) {
-            analogWrite(motor1In3, 0);
-            analogWrite(motor1In4, i);
-            Serial.println(i); 
-            delay(10);            
-          }       
-          delay(1000);*/
-
-        } /*else {
-          noTone(3);
-
-          digitalWrite(PIN_LED_BACK_RED, LOW);
-          digitalWrite(PIN_LED_SIDE_AND_FRONT_WHITE, LOW);
-          
-          analogWrite(motor2In1, 0);
-          analogWrite(motor2In2, 0);
-
-          analogWrite(motor1In3, 0);
-          analogWrite(motor1In4, 0);          
-        }*/
-
-
-        
+    // left motor
+    leftMotorSpeed = dataReceived[3];
+    if ( leftMotorSpeed < 128 ) { // forward
+      leftMotorSpeed = map(leftMotorSpeed, 127, 0, 100, 255);
+      analogWrite(MOTOR_LEFT_FORWARD_PIN, leftMotorSpeed);
+      analogWrite(MOTOR_LEFT_REVERSE_PIN, 0);
+    } else if ( leftMotorSpeed > 128 ) { // reverse
+      leftMotorSpeed = map(leftMotorSpeed, 129, 255, 100, 255);
+      analogWrite(MOTOR_LEFT_FORWARD_PIN, 0);
+      analogWrite(MOTOR_LEFT_REVERSE_PIN, leftMotorSpeed);
+    } else { // stop
+      analogWrite(MOTOR_LEFT_FORWARD_PIN, 0);
+      analogWrite(MOTOR_LEFT_REVERSE_PIN, 0);     
     }
-
     
+
+    // right motor
+    rightMotorSpeed = dataReceived[4];
+    if ( rightMotorSpeed < 128 ) { // forward
+      rightMotorSpeed = map(rightMotorSpeed, 127, 0, 100, 255);
+      analogWrite(MOTOR_RIGHT_FORWARD_PIN, rightMotorSpeed);
+      analogWrite(MOTOR_RIGHT_REVERSE_PIN, 0);
+    } else if ( rightMotorSpeed > 128 ) { // reverse
+      rightMotorSpeed = map(rightMotorSpeed, 129, 255, 100, 255);
+      analogWrite(MOTOR_RIGHT_FORWARD_PIN, 0);
+      analogWrite(MOTOR_RIGHT_REVERSE_PIN, rightMotorSpeed);
+    } else { // stop
+      analogWrite(MOTOR_RIGHT_FORWARD_PIN, 0);
+      analogWrite(MOTOR_RIGHT_REVERSE_PIN, 0);     
+    }
+        
+  }
+
 }
 
 
-void switchOffLights() {
+void switchLightsOff() {
   digitalWrite(PIN_LED_SIDE_AND_FRONT_WHITE, LOW);
-  digitalWrite(PIN_LED_BACK_RED, LOW);
+  digitalWrite(PIN_LED_TAILLIGHTS_RED, LOW);
 }
-
-
-
-/*
-void showData() {
-    if (newData == true) {
-        //Serial.print("Data received: ");
-        //Serial.println(dataReceived[0]);
-        if ( dataReceived[0] == 1023 ) {
-          digitalWrite(LED, HIGH);
-
-          /*for (int i=100; i<=255; i++) {
-            analogWrite(motor2In1, i);
-            analogWrite(motor2In2, 0);  
-            Serial.println(i);          
-          }*/
-/*
-          for (int i=100; i<=255; i++) {
-            analogWrite(motor1In3, i);
-            analogWrite(motor1In4, 0);            
-          }          
-
-        } else {
-          digitalWrite(LED, LOW);
-          analogWrite(motor2In1, 0);
-          analogWrite(motor2In2, 0);
-
-          analogWrite(motor1In3, 0);
-          analogWrite(motor1In4, 0);          
-        }
-        newData = false;
-    }
-}*/
 

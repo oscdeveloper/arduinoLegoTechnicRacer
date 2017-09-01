@@ -1,4 +1,4 @@
-// SimpleTx - the master or the transmitter
+// The master or the transmitter
 
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -21,8 +21,18 @@ const byte nrf24Address[5] = {'l','e','g','o','1'};
 
 RF24 radio(PIN_RF24_CE, PIN_RF24_CSN); // Create a Radio
 
-// this must match dataToSend in the RX
-unsigned int dataToSend[3]; // only three parameters are sending between tx/rx
+/* 
+ * this must match dataToSend in the RX
+ * five parameters are sending between tx/rx:
+ * 0 - statusHorn
+ * 1 - statusFrontSideBeams
+ * 2 - statusLights
+ * 3 - left motor
+ * 4 - right motor
+ */
+unsigned int dataToSend[5]; 
+
+bool radioWriteResult;
 
 unsigned int statusHorn = 0;
 unsigned int statusFrontSideBeams = 0;
@@ -34,14 +44,14 @@ unsigned long prevMillis;
 unsigned long txIntervalMillis = 1000; // send once per second
 */
 
-
+int leftMotorSpeed;
 
 
 void setup() {
 
   Serial.begin(9600);
 
-  //setup pins and settings: GamePad(clock, command, attention, data, Pressures, Rumble)
+  // setup pins and settings: GamePad(clock, command, attention, data, Pressures, Rumble)
   ps2x.config_gamepad(PIN_PS2_CLK, PIN_PS2_COM, PIN_PS2_ATT, PIN_PS2_DAT, false, false);
       
   Serial.println("Transmitter Starting...");
@@ -78,28 +88,14 @@ void loop() {
     statusLights = !statusLights;
   }
   dataToSend[2] = statusLights;
-        
 
-  
-  /*currentMillis = millis();
-  if (currentMillis - prevMillis >= txIntervalMillis) {
-      send();
-      prevMillis = millis();
-  }*/
-    
+  // left motor, only Y axis forward/reverse      
+  dataToSend[3] = ps2x.Analog(PSS_LY);
 
-  send();
-  delay(100); // TODO change to 20
+  // right motor, only Y axis forward/reverse       
+  dataToSend[4] = ps2x.Analog(PSS_RY);    
 
-}
-
-
-
-
-void send() {
-
-    bool rslt;
-    rslt = radio.write( &dataToSend, sizeof(dataToSend) );
+  radioWriteResult = radio.write( &dataToSend, sizeof(dataToSend) );  
 
     Serial.print("Data Sent: ");
     Serial.print(dataToSend[0]);
@@ -108,11 +104,26 @@ void send() {
     Serial.print("\t");
     Serial.print(dataToSend[2]);
     Serial.print("\t");
-    if (rslt) {
-        Serial.println("  Acknowledge received");
+    Serial.print(dataToSend[3]);
+    Serial.print("\t");
+    Serial.print(dataToSend[4]);
+    Serial.print("\t");  
+    
+    leftMotorSpeed = dataToSend[3]; 
+    if ( leftMotorSpeed < 128 ) {     
+      leftMotorSpeed = map(leftMotorSpeed, 127, 0, 100, 255);
+    } else if (leftMotorSpeed > 128 ) {
+      leftMotorSpeed = map(leftMotorSpeed, 129, 255, 100, 255);
     }
-    else {
-        Serial.println("  Tx failed");
-    }
+  Serial.print(leftMotorSpeed);
+    Serial.print("\t");
+  if (radioWriteResult) {
+    Serial.println("  Acknowledge received");
+  } else {
+    Serial.println("  Tx failed");
+  }
+
+  delay(20);
+
 }
 
