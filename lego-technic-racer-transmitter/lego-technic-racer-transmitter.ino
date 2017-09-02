@@ -44,7 +44,6 @@ unsigned int statusGear = 1;
 
 unsigned int speedIntervalMin;
 unsigned int speedIntervalMax;
-int leftMotorSpeed;
 
 void setup() {
 
@@ -52,7 +51,7 @@ void setup() {
   pinMode(PIN_LED_STATUS, OUTPUT);
   digitalWrite(PIN_LED_STATUS, HIGH);
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   // setup pins and settings: GamePad(clock, command, attention, data, Pressures, Rumble)
   ps2x.config_gamepad(PIN_PS2_CLK, PIN_PS2_COM, PIN_PS2_ATT, PIN_PS2_DAT, false, false);
@@ -115,23 +114,7 @@ void loop() {
     Serial.print("\t");
     Serial.print(dataToSend[4]);
     Serial.print("\t");  */
-    Serial.print(dataToSend[3]);
-    Serial.print("\t");
-    Serial.print(dataToSend[5]);
-Serial.print("\t");
-  getSpeedIntervalToGear(dataToSend[5]);
-  
-  if ( dataToSend[3] < 128 ) {
-     leftMotorSpeed = map(dataToSend[3], 127, 0, speedIntervalMin, speedIntervalMax);
-  }  else if ( dataToSend[3] > 128 ) { // reverse
-     leftMotorSpeed = map(dataToSend[3], 129, 255, speedIntervalMin, speedIntervalMax);
-  } else {
-    leftMotorSpeed = 0;
-  }
 
-  
-    Serial.print(leftMotorSpeed);
-    Serial.println("\t");
   if (radioWriteResult) {
     //Serial.println("  Acknowledge received");
   } else {
@@ -159,21 +142,3 @@ int gearChange() {
   return statusGear;
 }
 
-
-void getSpeedIntervalToGear (int gearNumber) {
-
-  switch (gearNumber) {
-    case 1:
-      speedIntervalMin = 150;
-      speedIntervalMax = 200;
-      break;
-    case 2:
-      speedIntervalMin = 200;
-      speedIntervalMax = 220;
-      break;     
-    case 3:
-      speedIntervalMin = 220;
-      speedIntervalMax = 255;
-      break;
-  }
-}
