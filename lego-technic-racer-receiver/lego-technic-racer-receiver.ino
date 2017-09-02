@@ -7,11 +7,11 @@
 #define PIN_RF24_CE 8
 #define PIN_RF24_CSN 7
 
-#define MOTOR_LEFT_FORWARD_PIN 5 
-#define MOTOR_LEFT_REVERSE_PIN 6
+#define MOTOR_LEFT_FORWARD_PIN 6
+#define MOTOR_LEFT_REVERSE_PIN 5
 
-#define MOTOR_RIGHT_REVERSE_PIN 9  
-#define MOTOR_RIGHT_FORWARD_PIN 10
+#define MOTOR_RIGHT_REVERSE_PIN 10 
+#define MOTOR_RIGHT_FORWARD_PIN 9
 
 #define PIN_HORN 3
 
@@ -23,7 +23,7 @@ const byte thisSlaveAddress[5] = {'l','e','g','o','1'};
 
 RF24 radio(PIN_RF24_CE, PIN_RF24_CSN);
 
-int dataReceived[5]; // this must match dataToSend in the TX
+unsigned int dataReceived[6]; // this must match dataToSend in the TX
 
 unsigned int statusFrontSideBeams = 0;
 unsigned int statusLights = 0;
@@ -31,6 +31,8 @@ unsigned int statusLights = 0;
 unsigned int leftMotorSpeed;
 unsigned int rightMotorSpeed;
 
+unsigned int speedIntervalMin;
+unsigned int speedIntervalMax;
 
 
 
@@ -114,35 +116,39 @@ void loop() {
     }
 
 
+    // gear change
+    getSpeedIntervalToGear(dataReceived[5]);
+    
+
     // left motor
-    leftMotorSpeed = dataReceived[3];
-    if ( leftMotorSpeed < 128 ) { // forward
-      leftMotorSpeed = map(leftMotorSpeed, 127, 0, 100, 255);
+    if ( dataReceived[3] < 128 ) { // forward    
+      leftMotorSpeed = map(leftMotorSpeed, 127, 0, speedIntervalMin, speedIntervalMax);
       analogWrite(MOTOR_LEFT_FORWARD_PIN, leftMotorSpeed);
       analogWrite(MOTOR_LEFT_REVERSE_PIN, 0);
-    } else if ( leftMotorSpeed > 128 ) { // reverse
-      leftMotorSpeed = map(leftMotorSpeed, 129, 255, 100, 255);
+    } else if ( dataReceived[3] > 128 ) { // reverse
+      leftMotorSpeed = map(leftMotorSpeed, 129, 255, speedIntervalMin, speedIntervalMax);
       analogWrite(MOTOR_LEFT_FORWARD_PIN, 0);
       analogWrite(MOTOR_LEFT_REVERSE_PIN, leftMotorSpeed);
     } else { // stop
-      analogWrite(MOTOR_LEFT_FORWARD_PIN, 0);
-      analogWrite(MOTOR_LEFT_REVERSE_PIN, 0);     
+      leftMotorSpeed = 0;
+      analogWrite(MOTOR_LEFT_FORWARD_PIN, leftMotorSpeed);
+      analogWrite(MOTOR_LEFT_REVERSE_PIN, leftMotorSpeed);     
     }
     
 
     // right motor
-    rightMotorSpeed = dataReceived[4];
-    if ( rightMotorSpeed < 128 ) { // forward
-      rightMotorSpeed = map(rightMotorSpeed, 127, 0, 100, 255);
+    if ( dataReceived[4] < 128 ) { // forward
+      rightMotorSpeed = map(rightMotorSpeed, 127, 0, speedIntervalMin, speedIntervalMax);
       analogWrite(MOTOR_RIGHT_FORWARD_PIN, rightMotorSpeed);
       analogWrite(MOTOR_RIGHT_REVERSE_PIN, 0);
-    } else if ( rightMotorSpeed > 128 ) { // reverse
-      rightMotorSpeed = map(rightMotorSpeed, 129, 255, 100, 255);
+    } else if ( dataReceived[4] > 128 ) { // reverse
+      rightMotorSpeed = map(rightMotorSpeed, 129, 255, speedIntervalMin, speedIntervalMax);
       analogWrite(MOTOR_RIGHT_FORWARD_PIN, 0);
       analogWrite(MOTOR_RIGHT_REVERSE_PIN, rightMotorSpeed);
     } else { // stop
-      analogWrite(MOTOR_RIGHT_FORWARD_PIN, 0);
-      analogWrite(MOTOR_RIGHT_REVERSE_PIN, 0);     
+      rightMotorSpeed = 0;
+      analogWrite(MOTOR_RIGHT_FORWARD_PIN, rightMotorSpeed);
+      analogWrite(MOTOR_RIGHT_REVERSE_PIN, rightMotorSpeed);     
     }
         
   }
@@ -153,5 +159,24 @@ void loop() {
 void switchLightsOff() {
   digitalWrite(PIN_LED_SIDE_AND_FRONT_WHITE, LOW);
   digitalWrite(PIN_LED_TAILLIGHTS_RED, LOW);
+}
+
+
+void getSpeedIntervalToGear (int gearNumber) {
+
+  switch (gearNumber) {
+    case 1:
+      speedIntervalMin = 150;
+      speedIntervalMax = 200;
+      break;
+    case 2:
+      speedIntervalMin = 200;
+      speedIntervalMax = 220;
+      break;     
+    case 3:
+      speedIntervalMin = 220;
+      speedIntervalMax = 255;
+      break;
+  }
 }
 
